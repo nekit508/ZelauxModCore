@@ -6,12 +6,11 @@ buildscript{
 
 
         // v7
-//        mindustryPath = "com.github.Anuken.MindustryJitpack"
         mindustryPath = "com.github.Anuken.Mindustry"
-        mindustryVersionFull = 'v141.1'
-        mindustryVersion = mindustryVersionFull//10
+//        mindustryPath = "com.github.Anuken.Mindustry"
+        mindustryVersionFull = 'v145.1'
+        mindustryVersion = 'v145.1'//10
         arcVersion = mindustryVersion
-        mindustryVersionOld = mindustryVersion
 //        arcVersion = "916c5a77"
 
 
@@ -25,6 +24,16 @@ buildscript{
         jabelVersion = "0.6.0"
 
         jparcerVersion = "3.22.1"
+        arcModule = { String name ->
+            //skip to last submodule
+            if(name.contains(':')) name = name.split(':').last()
+            return "com.github.Anuken.Arc:$name:$arcVersion"
+        }
+        mindustryModule = { String name ->
+            //skip to last submodule
+            if(name.contains(':')) name = name.split(':').last()
+            return "$mindustryPath:$name:$mindustryVersion"
+        }
     }
     repositories{
         mavenLocal()
@@ -32,10 +41,10 @@ buildscript{
         google()
         maven{ url "https://oss.sonatype.org/content/repositories/snapshots/" }
         maven{ url 'https://jitpack.io' }
+        maven { url 'https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository' }
     }
     dependencies{
         classpath "$mindustryPath:core:$mindustryVersion"
-        classpath "com.github.Anuken.Mindustry:tools:v135"
         classpath "com.github.Anuken.Arc:arc-core:$arcVersion"
         classpath "com.github.Anuken.Arc:packer:$arcVersion"
     }
@@ -54,21 +63,6 @@ allprojects{
     version = 'release'
     group = 'com.github.Zelaux'
     ext{
-        arcModule = { String name ->
-            //skip to last submodule
-            if(name.contains(':')) name = name.split(':').last()
-            return "com.github.Anuken.Arc:$name:$arcVersion"
-        }
-        mindustryModule = { String name ->
-            //skip to last submodule
-            if(name.contains(':')) name = name.split(':').last()
-            return "$mindustryPath:$name:$mindustryVersion"
-        }
-        mindustryOldModule = { String name ->
-            //skip to last submodule
-            if(name.contains(':')) name = name.split(':').last()
-            return "com.github.Anuken.Mindustry:$name:v135"
-        }
         writeProcessors = {
             new File(rootDir, "annotations/src/main/resources/META-INF/services/").mkdirs()
             def processorFile = new File(rootDir, "annotations/src/main/resources/META-INF/services/javax.annotation.processing.Processor")
@@ -97,10 +91,11 @@ allprojects{
         maven{ url "https://oss.sonatype.org/content/repositories/snapshots/" }
         maven{ url "https://oss.sonatype.org/content/repositories/releases/" }
         maven{ url 'https://jitpack.io' }
+        maven { url 'https://raw.githubusercontent.com/Zelaux/MindustryRepo/master/repository' }
     }
 
     dependencies{
-        implementation 'org.jetbrains:annotations:23.1.0'
+        compileOnly 'org.jetbrains:annotations:23.1.0'
     }
 
     tasks.withType(JavaCompile){
@@ -120,7 +115,13 @@ allprojects{
                 '--add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED'
         ])
     }
-
+    jar{
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        from{
+            configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
+//        project(":core").fileTree("build/libs/core.jar").collect { it.isDirectory() ? it : zipTree(it) }
+        }
+    }
 /*//force arc version
     */
 }
@@ -204,7 +205,7 @@ project(":core"){
 //            println "sub adding "+sub.getName()
             String name = sub.getName();
             println "subproject: " + sub.getName()
-            if(!["tools", "annotations", "localAnnotations", "plugins", "blocks", "tiledStructures", "tests", "utils", project.getName()].contains(name)){
+            if(!["tools", "annotations", "localAnnotations", "plugins", "blocks","customBlockShape", "tiledStructures", "tests", "utils", project.getName()].contains(name)){
                 println "implemented"
                 implementation sub
             }
@@ -259,6 +260,7 @@ project(":tests"){
     dependencies{
         implementation project(":core")
         implementation project(":blocks")
+        implementation project(":customBlockShape")
         implementation project(":tiledStructures")
         implementation project(":graphics")
         compileOnly arcModule('arc-core')
@@ -268,6 +270,7 @@ project(":tests"){
 
         testImplementation project(":core")
         testImplementation project(":blocks")
+        testImplementation project(":customBlockShape")
         testImplementation project(":tiledStructures")
 
         testImplementation arcModule('arc-core')
@@ -313,7 +316,7 @@ project(":tools"){
         implementation arcModule('arc-core')
 
         implementation "com.github.javaparser:javaparser-symbol-solver-core:$jparcerVersion"
-        implementation mindustryModule("core")
+        compileOnly mindustryModule("core")
 //        implementation mindustryOldModule("tools")
 
         implementation "org.eclipse.jgit:org.eclipse.jgit:$jgitVersion"
